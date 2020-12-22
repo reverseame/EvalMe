@@ -1,0 +1,2 @@
+psutil==5.6.5
+humanfriendly==9.1
