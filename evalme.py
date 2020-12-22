@@ -15,7 +15,6 @@ import psutil
 import time
 import humanfriendly
 
-
 def usage():
 	usage = "Use EvalMe with the exact syntax as hyperfine. Example:\n"
 	usage += "\tevalme.py \"ls -R\"\n"
@@ -90,8 +89,8 @@ def check_ram_usage(arguments):
 		counter += 1
 	virtual_memory = virtual_memory / counter
 
-	print("[+] Average of real memory used in " + str(runs) + " executions: " + humanfriendly.format_size(real_memory))
-	print("[+] Average of virtual memory used in " + str(runs) + " executions: " + humanfriendly.format_size(virtual_memory))
+	print("[+] Average of real memory used while executing \"" + str(arguments.command) + "\" " +str(runs) + " times: " + humanfriendly.format_size(real_memory))
+	print("[+] Average of virtual memory used while executing \"" + str(arguments.command) +"\" "+ str(runs) + " times: " + humanfriendly.format_size(virtual_memory))
 	#print("ResultTable -> ")
 	#print(resultTable)
 	#for memory in resultTable:
