@@ -20,6 +20,7 @@ import psutil
 import time
 import humanfriendly
 import sys
+import pandas
 
 NAME = "EvalMe"
 
@@ -48,10 +49,6 @@ def parse_arguments():
 	return arguments
 
 def launch_hyperfine(arguments):
-
-	print("RUNS VALUE IS ->" + str(arguments.runs))
-	print("SLICE VALUE IS ->" + str(arguments.SLICE_IN_SECONDS))
-	print("VERBOSITY IS ->" + str(arguments.verbose))
 
 	# Parsing the corresponding arguments and binary to execute by hiperfine
 	arguments_copy = copy.deepcopy(arguments)
@@ -87,16 +84,12 @@ def launch_hyperfine(arguments):
 	print("[+] Results:")
 	for line in popen.stdout.decode().split("\n"):
 		if "Time" in line or "Range" in line:
-			print("[+]\t" + line)
+			print("\t[>]\t" + line)
 	print()
 	return return_code
 
 
 def check_ram_usage(arguments):
-
-
-	print("RUNS VALUE IS ->" + str(arguments.runs))
-	print("SLICE VALUE IS ->" + str(arguments.SLICE_IN_SECONDS))
 
 	RUNS = arguments.runs
 	SLICE_IN_SECONDS = arguments.SLICE_IN_SECONDS
@@ -127,8 +120,15 @@ def check_ram_usage(arguments):
 	virtual_memory = virtual_memory / counter
 
 	print("[+] Results of executing \"" + str(arguments.command) + "\" " +str(RUNS) + " times:")
-	print("[+]\t Real memory (average): " + humanfriendly.format_size(real_memory))
-	print("[+]\t Virtual memory (average): " + humanfriendly.format_size(virtual_memory))
+	print("\t[>]\t Real memory (average): " + humanfriendly.format_size(real_memory))
+
+	#print_descriptive_statistics(resultTable[::2])
+
+	pandas.options.display.float_format = "{0:.2f}".format # Printing statistics with 2 decimals
+
+	print(pandas.DataFrame(resultTable[::2]).describe(include='all')) # Real memory
+	print("\t[>]\t Virtual memory (average): " + humanfriendly.format_size(virtual_memory))
+	print(pandas.DataFrame(resultTable[1::2]).describe(include='all')) # Virtual memory
 	#print("ResultTable -> ")
 	#print(resultTable)
 	#for memory in resultTable:
@@ -138,12 +138,20 @@ def check_ram_usage(arguments):
 def print_error(message):
 	print(message, file=sys.stderr)
 
+'''
+def print_descriptive_statistics(data_array):
+	data = pandas.DataFrame(data_array)
+	print("\t\t[>] Count:" + data.count())
+'''
+
 if __name__ == '__main__':
 	arguments = parse_arguments()
+	print("[+] CPU BENCHMARK [+]")
 	hyperfine_exit_code = launch_hyperfine(arguments)
 	if hyperfine_exit_code:
 		print_error("[!] Aborting "+NAME+"!")
 		sys.exit(-1)
+	print("[+] MEMORY BENCHMARK [+]")
 	check_ram_usage(arguments)
 	
 	# Helpful links:
