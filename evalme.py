@@ -75,6 +75,18 @@ def print_results_from_json_file(filename):
 		print("\t[>]\tsystem:    {} s".format(result['system']))
 		print()
 
+def print_descriptive_statistics_from_dataframe(dataframe):
+	# loc function allows to get specific values given their label
+	# second identifier (in this case 0) is needed as it can be seen
+	# in the examples at the official docs:
+	# https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.DataFrame.loc.html
+	#print("\t[>]\tcount " + humanfriendly.format_size(dataframe.loc['count', 0]))
+	print("\t[>]\tmean " + humanfriendly.format_size(dataframe.loc['mean', 0]))
+	print("\t[>]\tstddev " + humanfriendly.format_size(dataframe.loc['std', 0]))
+	print("\t[>]\tmin " + humanfriendly.format_size(dataframe.loc['min', 0]))
+	print("\t[>]\tmax " + humanfriendly.format_size(dataframe.loc['max', 0]))
+	print()
+
 def launch_hyperfine(arguments):
 
 	filename = get_current_datetime()+".json"
@@ -140,30 +152,15 @@ def check_ram_usage(arguments):
 			resultTable.append(used_memory.vms)
 			time.sleep(SLICE_IN_SECONDS)
 
-	real_memory = 0
-	virtual_memory = 0
-	counter = 0
-	for memory in resultTable[::2]:
-		real_memory += memory
-		counter += 1
-	real_memory = real_memory / counter
+	#pandas.options.display.float_format = "{0:.2f}".format # Printing statistics with 2 decimals
+	print("[+] Results:")
+	# Real memory
+	print("\tReal memory:")
+	print_descriptive_statistics_from_dataframe(pandas.DataFrame(resultTable[::2]).describe(include='all'))
 
-	counter = 0
-	for memory in resultTable[1::2]:
-		virtual_memory += memory
-		counter += 1
-	virtual_memory = virtual_memory / counter
-
-	print("[+] Results of executing \"" + str(arguments.command) + "\" " +str(RUNS) + " times:")
-	print("\t[>]\t Real memory (average): " + humanfriendly.format_size(real_memory))
-
-	#print_descriptive_statistics(resultTable[::2])
-
-	pandas.options.display.float_format = "{0:.2f}".format # Printing statistics with 2 decimals
-
-	print(pandas.DataFrame(resultTable[::2]).describe(include='all')) # Real memory
-	print("\t[>]\t Virtual memory (average): " + humanfriendly.format_size(virtual_memory))
-	print(pandas.DataFrame(resultTable[1::2]).describe(include='all')) # Virtual memory
+	# Virtual memory
+	print("\tVirtual memory:")
+	print_descriptive_statistics_from_dataframe(pandas.DataFrame(resultTable[1::2]).describe(include='all'))
 	#print("ResultTable -> ")
 	#print(resultTable)
 	#for memory in resultTable:
@@ -181,6 +178,7 @@ def print_descriptive_statistics(data_array):
 
 if __name__ == '__main__':
 	arguments = parse_arguments()
+	print("[!][*] Benchmarks of executing \"" + str(arguments.command) + "\" " +str(arguments.runs) + " times [*][!]")
 	print("[+] CPU BENCHMARK [+]")
 	hyperfine_exit_code = launch_hyperfine(arguments)
 	if hyperfine_exit_code:
