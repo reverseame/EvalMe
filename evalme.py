@@ -21,6 +21,9 @@ import time
 import humanfriendly
 import sys
 import pandas
+import json
+import os
+from datetime import datetime
 
 NAME = "EvalMe"
 
@@ -48,7 +51,33 @@ def parse_arguments():
 
 	return arguments
 
+def get_current_datetime():
+	return str(datetime.now()).replace(' ', '_')
+
+def delete_file(filename):
+	os.remove(filename)
+
+def print_results_from_json_file(filename):
+
+	print("[+] Results:")
+	with open(filename) as file:
+		results = json.load(file)["results"]
+
+	for result in results: 
+		#print(result)
+		print("\t[>] Command: '{}'".format(result['command']))
+		print("\t[>]\tmean:   {} s".format(result['mean']))
+		print("\t[>]\tstddev: {} s".format(result['stddev']))
+		print("\t[>]\tmedian: {} s".format(result['median']))
+		print("\t[>]\tmin:    {} s".format(result['min']))
+		print("\t[>]\tmax:    {} s".format(result['max']))
+		print("\t[>]\tuser:    {} s".format(result['user']))
+		print("\t[>]\tsystem:    {} s".format(result['system']))
+		print()
+
 def launch_hyperfine(arguments):
+
+	filename = get_current_datetime()+".json"
 
 	# Parsing the corresponding arguments and binary to execute by hiperfine
 	arguments_copy = copy.deepcopy(arguments)
@@ -66,6 +95,11 @@ def launch_hyperfine(arguments):
 			arguments_array.append(str(value))
 
 	arguments_array.append(command)
+
+	# Export to JSON file
+	arguments_array.append("--export-json")
+	arguments_array.append(filename)
+
 	arguments_array.insert(0, "hyperfine")
 
 	print("[+] Launching hyperfine\n\t"  + str(arguments_array))
@@ -81,11 +115,11 @@ def launch_hyperfine(arguments):
 		print_error(popen.stderr.decode())
 		return return_code
 
-	print("[+] Results:")
-	for line in popen.stdout.decode().split("\n"):
-		if "Time" in line or "Range" in line:
-			print("\t[>]\t" + line)
-	print()
+	print_results_from_json_file(filename)
+
+	# Delete results file
+	delete_file(filename)
+
 	return return_code
 
 
@@ -97,6 +131,7 @@ def check_ram_usage(arguments):
 	resultTable = []
 	for i in range(0,RUNS):
 		proc = subprocess.Popen(arguments.command, shell=True, stdout=subprocess.DEVNULL)
+		#time.sleep(SLICE_IN_SECONDS)
 		while proc.poll() is None:
 			p = psutil.Process(proc.pid)
 			used_memory = p.memory_full_info()
