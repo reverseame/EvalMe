@@ -23,6 +23,7 @@ import sys
 import pandas
 import json
 import os
+import tempfile
 from datetime import datetime
 
 NAME = "EvalMe"
@@ -66,13 +67,14 @@ def print_results_from_json_file(filename):
 	for result in results: 
 		#print(result)
 		print("\t[>] Command: '{}'".format(result['command']))
-		print("\t[>]\tmean:   {} s".format(result['mean']))
-		print("\t[>]\tstddev: {} s".format(result['stddev']))
-		print("\t[>]\tmedian: {} s".format(result['median']))
-		print("\t[>]\tmin:    {} s".format(result['min']))
-		print("\t[>]\tmax:    {} s".format(result['max']))
-		print("\t[>]\tuser:    {} s".format(result['user']))
-		print("\t[>]\tsystem:    {} s".format(result['system']))
+		#print("\t[>]\tmean:   {} s".format(result['mean']))
+		print("\t[>]\tmean:   {:.6f} ms".format(result['mean']*1000)) # manually convert to ms
+		print("\t[>]\tstddev: {:.6f} ms".format(result['stddev']*1000))
+		print("\t[>]\tmedian: {:.6f} ms".format(result['median']*1000))
+		print("\t[>]\tmin:    {:.6f} ms".format(result['min']*1000))
+		print("\t[>]\tmax:    {:.6f} ms".format(result['max']*1000))
+		print("\t[>]\tuser:    {:.6f} ms".format(result['user']*1000))
+		print("\t[>]\tsystem:    {:.6f} ms".format(result['system']*1000))
 		print()
 
 def print_descriptive_statistics_from_dataframe(dataframe):
@@ -89,7 +91,9 @@ def print_descriptive_statistics_from_dataframe(dataframe):
 
 def launch_hyperfine(arguments):
 
-	filename = get_current_datetime()+".json"
+	# Temporary file creation
+	os_handler, filename = tempfile.mkstemp(suffix=".json", dir=".") # If dir is not specified, the file is created within /tmp/
+	print("TEMPORARY FILE CREATED -> " + filename)
 
 	# Parsing the corresponding arguments and binary to execute by hiperfine
 	arguments_copy = copy.deepcopy(arguments)
