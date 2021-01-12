@@ -47,8 +47,8 @@ def parse_arguments():
 	parser.add_argument("-r", "--runs", action="store", type=int, help="(Default = 10) Perform exactly RUNS runs for each command.", default=10)
 	parser.add_argument("-p", "--prepare", help="Execute the command before each timing run. This is useful for clearing disk caches, for example. \nThe --prepare option can be specified once for all commands or multiple times, once for each command. In the latter case, each preparation command will be run prior to the corresponding benchmark command.")
 	parser.add_argument("-c", "--cleanup", help="Execute the command after the completion of all benchmarking runs for each individual command to be benchmarked. This is useful if the commands to be benchmarked produce artifacts that need to be cleaned up.")
-	parser.add_argument("--verbose", "-v", action="count", default=0, help="Prints the original hyperfine's output")
-	parser.add_argument("--json", "-j", action="count", default=0, help="Prints JSON-formatted output")
+	parser.add_argument("--verbose", "-v", action="count", default=0, help="Prints the original hyperfine's output.")
+	parser.add_argument("--json", "-j", action="count", default=0, help="Prints JSON-formatted output. CPU is measured in seconds; memory is measured in bytes.")
 	arguments = parser.parse_args()
 
 	return arguments
@@ -61,34 +61,56 @@ def delete_file(filename):
 
 def print_results_from_json_file(filename):
 
-	print_output("[+] Results:")
 	with open(filename) as file:
 		results = json.load(file)["results"]
 
 	for result in results: 
-		#print(result)
-		print_output("\t[>] Command: '{}'".format(result['command']))
-		#print("\t[>]\tmean:   {} s".format(result['mean']))
-		print_output("\t[>]\tmean:   {:.6f} ms".format(result['mean']*1000)) # manually convert to ms
-		print_output("\t[>]\tstddev: {:.6f} ms".format(result['stddev']*1000))
-		print_output("\t[>]\tmedian: {:.6f} ms".format(result['median']*1000))
-		print_output("\t[>]\tmin:    {:.6f} ms".format(result['min']*1000))
-		print_output("\t[>]\tmax:    {:.6f} ms".format(result['max']*1000))
-		print_output("\t[>]\tuser:    {:.6f} ms".format(result['user']*1000))
-		print_output("\t[>]\tsystem:    {:.6f} ms".format(result['system']*1000))
-		print_output("")
+		if arguments.json:
+			json_data['results']['cpu'] = {
+				'mean': result['mean'],
+				'stddev': result['stddev'],
+				'median': result['median'],
+				'min': result['min'],
+				'max': result['max'],
+				'user': result['user'],
+				'system': result['system'],
+				'times': result['times']
+			}
+		else:
+			#print(result)
+			print_output("\t[>] Command: '{}'".format(result['command']))
+			#print("\t[>]\tmean:   {} s".format(result['mean']))
+			print_output("\t[>]\tmean:   {:.6f} ms".format(result['mean']*1000)) # manually convert to ms
+			print_output("\t[>]\tstddev: {:.6f} ms".format(result['stddev']*1000))
+			print_output("\t[>]\tmedian: {:.6f} ms".format(result['median']*1000))
+			print_output("\t[>]\tmin:    {:.6f} ms".format(result['min']*1000))
+			print_output("\t[>]\tmax:    {:.6f} ms".format(result['max']*1000))
+			print_output("\t[>]\tuser:    {:.6f} ms".format(result['user']*1000))
+			print_output("\t[>]\tsystem:    {:.6f} ms".format(result['system']*1000))
+			print_output("")
 
-def print_descriptive_statistics_from_dataframe(dataframe):
+def print_descriptive_statistics_from_dataframe(dataframe, memory_type, data):
 	# loc function allows to get specific values given their label
 	# second identifier (in this case 0) is needed as it can be seen
 	# in the examples at the official docs:
 	# https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.DataFrame.loc.html
 	#print("\t[>]\tcount " + humanfriendly.format_size(dataframe.loc['count', 0]))
-	print_output("\t[>]\tmean " + humanfriendly.format_size(dataframe.loc['mean', 0]))
-	print_output("\t[>]\tstddev " + humanfriendly.format_size(dataframe.loc['std', 0]))
-	print_output("\t[>]\tmin " + humanfriendly.format_size(dataframe.loc['min', 0]))
-	print_output("\t[>]\tmax " + humanfriendly.format_size(dataframe.loc['max', 0]))
-	print_output("")
+
+	if arguments.json:
+		json_data['results']['memory'][memory_type] = {
+			'mean' : dataframe.loc['mean', 0],
+			'stddev' : dataframe.loc['std', 0],
+			'min': dataframe.loc['min', 0],
+			'max': dataframe.loc['max', 0],
+			'count': dataframe.loc['count', 0],
+			'bytes': data
+		}
+	else:
+		print_output("\t[>]\tmean " + humanfriendly.format_size(dataframe.loc['mean', 0]))
+		print_output("\t[>]\tstddev " + humanfriendly.format_size(dataframe.loc['std', 0]))
+		print_output("\t[>]\tmin " + humanfriendly.format_size(dataframe.loc['min', 0]))
+		print_output("\t[>]\tmax " + humanfriendly.format_size(dataframe.loc['max', 0]))
+		print_output("")
 
 def launch_hyperfine(arguments, filename):
 
@@ -129,6 +151,8 @@ def launch_hyperfine(arguments, filename):
 		print_error(popen.stderr.decode())
 		return return_code
 
+	print_output("[+] Results:")		
+
 	print_results_from_json_file(filename)
 
 	return return_code
@@ -153,13 +177,18 @@ def check_ram_usage(arguments):
 
 	#pandas.options.display.float_format = "{0:.2f}".format # Printing statistics with 2 decimals
 	print_output("[+] Results:")
+
+	# Create corresponding JSON entry, if that's the case
+	if arguments.json:
+		json_data['results']['memory'] = {}
+
 	# Real memory
 	print_output("\tReal memory:")
-	print_descriptive_statistics_from_dataframe(pandas.DataFrame(resultTable[::2]).describe(include='all'))
+	print_descriptive_statistics_from_dataframe(pandas.DataFrame(resultTable[::2]).describe(include='all'), "real", resultTable[::2])
 
 	# Virtual memory
 	print_output("\tVirtual memory:")
-	print_descriptive_statistics_from_dataframe(pandas.DataFrame(resultTable[1::2]).describe(include='all'))
+	print_descriptive_statistics_from_dataframe(pandas.DataFrame(resultTable[1::2]).describe(include='all'), "virtual", resultTable[1::2])
 	#print("ResultTable -> ")
 	#print(resultTable)
 	#for memory in resultTable:
@@ -184,12 +213,18 @@ if __name__ == '__main__':
 	# If JSON was specified, print_output function does nothing
 	print_output = print if not arguments.json else lambda *a, **k: None
 
+	# If JSON was specified, JSON object must be created
+	if arguments.json:
+		json_data = {}
+		json_data['command'] = arguments.command
+		json_data['results'] = {}
+	
+
 	print_output("[!][*] Benchmarks of executing \"" + str(arguments.command) + "\" " +str(arguments.runs) + " times [*][!]")
 	print_output("[+] CPU BENCHMARK [+]")
 
 	# Temporary file creation
 	os_handler, filename = tempfile.mkstemp(suffix=".json", dir=".") # If dir is not specified, the file is created within /tmp/
-	print_output("TEMPORARY FILE CREATED -> " + filename)
 
 	hyperfine_exit_code = launch_hyperfine(arguments, filename)
 	if hyperfine_exit_code:
@@ -203,6 +238,9 @@ if __name__ == '__main__':
 	print_output("[+] MEMORY BENCHMARK [+]")
 	check_ram_usage(arguments)
 	
+	if arguments.json:
+		print(json.dumps(json_data, indent=4))
+
 	# Helpful links:
 	# https://stackoverflow.com/questions/12263779/how-to-get-memory-usage-of-an-external-program-python
 	# https://psutil.readthedocs.io/en/latest/#psutil.Process.memory_info
