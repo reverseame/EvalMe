@@ -48,6 +48,7 @@ def parse_arguments():
 	parser.add_argument("-p", "--prepare", help="Execute the command before each timing run. This is useful for clearing disk caches, for example. \nThe --prepare option can be specified once for all commands or multiple times, once for each command. In the latter case, each preparation command will be run prior to the corresponding benchmark command.")
 	parser.add_argument("-c", "--cleanup", help="Execute the command after the completion of all benchmarking runs for each individual command to be benchmarked. This is useful if the commands to be benchmarked produce artifacts that need to be cleaned up.")
 	parser.add_argument("--verbose", "-v", action="count", default=0, help="Prints the original hyperfine's output")
+	parser.add_argument("--json", "-j", action="count", default=0, help="Prints JSON-formatted output")
 	arguments = parser.parse_args()
 
 	return arguments
@@ -60,22 +61,22 @@ def delete_file(filename):
 
 def print_results_from_json_file(filename):
 
-	print("[+] Results:")
+	print_output("[+] Results:")
 	with open(filename) as file:
 		results = json.load(file)["results"]
 
 	for result in results: 
 		#print(result)
-		print("\t[>] Command: '{}'".format(result['command']))
+		print_output("\t[>] Command: '{}'".format(result['command']))
 		#print("\t[>]\tmean:   {} s".format(result['mean']))
-		print("\t[>]\tmean:   {:.6f} ms".format(result['mean']*1000)) # manually convert to ms
-		print("\t[>]\tstddev: {:.6f} ms".format(result['stddev']*1000))
-		print("\t[>]\tmedian: {:.6f} ms".format(result['median']*1000))
-		print("\t[>]\tmin:    {:.6f} ms".format(result['min']*1000))
-		print("\t[>]\tmax:    {:.6f} ms".format(result['max']*1000))
-		print("\t[>]\tuser:    {:.6f} ms".format(result['user']*1000))
-		print("\t[>]\tsystem:    {:.6f} ms".format(result['system']*1000))
-		print()
+		print_output("\t[>]\tmean:   {:.6f} ms".format(result['mean']*1000)) # manually convert to ms
+		print_output("\t[>]\tstddev: {:.6f} ms".format(result['stddev']*1000))
+		print_output("\t[>]\tmedian: {:.6f} ms".format(result['median']*1000))
+		print_output("\t[>]\tmin:    {:.6f} ms".format(result['min']*1000))
+		print_output("\t[>]\tmax:    {:.6f} ms".format(result['max']*1000))
+		print_output("\t[>]\tuser:    {:.6f} ms".format(result['user']*1000))
+		print_output("\t[>]\tsystem:    {:.6f} ms".format(result['system']*1000))
+		print_output("")
 
 def print_descriptive_statistics_from_dataframe(dataframe):
 	# loc function allows to get specific values given their label
@@ -83,17 +84,17 @@ def print_descriptive_statistics_from_dataframe(dataframe):
 	# in the examples at the official docs:
 	# https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.DataFrame.loc.html
 	#print("\t[>]\tcount " + humanfriendly.format_size(dataframe.loc['count', 0]))
-	print("\t[>]\tmean " + humanfriendly.format_size(dataframe.loc['mean', 0]))
-	print("\t[>]\tstddev " + humanfriendly.format_size(dataframe.loc['std', 0]))
-	print("\t[>]\tmin " + humanfriendly.format_size(dataframe.loc['min', 0]))
-	print("\t[>]\tmax " + humanfriendly.format_size(dataframe.loc['max', 0]))
-	print()
+	print_output("\t[>]\tmean " + humanfriendly.format_size(dataframe.loc['mean', 0]))
+	print_output("\t[>]\tstddev " + humanfriendly.format_size(dataframe.loc['std', 0]))
+	print_output("\t[>]\tmin " + humanfriendly.format_size(dataframe.loc['min', 0]))
+	print_output("\t[>]\tmax " + humanfriendly.format_size(dataframe.loc['max', 0]))
+	print_output("")
 
 def launch_hyperfine(arguments):
 
 	# Temporary file creation
 	os_handler, filename = tempfile.mkstemp(suffix=".json", dir=".") # If dir is not specified, the file is created within /tmp/
-	print("TEMPORARY FILE CREATED -> " + filename)
+	print_output("TEMPORARY FILE CREATED -> " + filename)
 
 	# Parsing the corresponding arguments and binary to execute by hiperfine
 	arguments_copy = copy.deepcopy(arguments)
@@ -103,6 +104,7 @@ def launch_hyperfine(arguments):
 	del vars(arguments_copy)['command']
 	del vars(arguments_copy)['SLICE_IN_SECONDS']
 	del vars(arguments_copy)['verbose']
+	del vars(arguments_copy)['json']
 
 	arguments_array = []
 	for argument,value in vars(arguments_copy).items():
@@ -118,14 +120,14 @@ def launch_hyperfine(arguments):
 
 	arguments_array.insert(0, "hyperfine")
 
-	print("[+] Launching hyperfine\n\t"  + str(arguments_array))
+	print_output("[+] Launching hyperfine\n\t"  + str(arguments_array))
 
 
 	popen = subprocess.run(arguments_array, capture_output=True) # Output is returned as byte sequence
 	return_code = popen.returncode
 
 	if arguments.verbose:
-		print("[+] Hyperfine original output:\n" + popen.stdout.decode())
+		print_output("[+] Hyperfine original output:\n" + popen.stdout.decode())
 
 	if return_code:
 		print_error(popen.stderr.decode())
@@ -157,13 +159,13 @@ def check_ram_usage(arguments):
 			time.sleep(SLICE_IN_SECONDS)
 
 	#pandas.options.display.float_format = "{0:.2f}".format # Printing statistics with 2 decimals
-	print("[+] Results:")
+	print_output("[+] Results:")
 	# Real memory
-	print("\tReal memory:")
+	print_output("\tReal memory:")
 	print_descriptive_statistics_from_dataframe(pandas.DataFrame(resultTable[::2]).describe(include='all'))
 
 	# Virtual memory
-	print("\tVirtual memory:")
+	print_output("\tVirtual memory:")
 	print_descriptive_statistics_from_dataframe(pandas.DataFrame(resultTable[1::2]).describe(include='all'))
 	#print("ResultTable -> ")
 	#print(resultTable)
@@ -174,6 +176,9 @@ def check_ram_usage(arguments):
 def print_error(message):
 	print(message, file=sys.stderr)
 
+#def print_output(message):
+#	print(message)
+
 '''
 def print_descriptive_statistics(data_array):
 	data = pandas.DataFrame(data_array)
@@ -182,13 +187,19 @@ def print_descriptive_statistics(data_array):
 
 if __name__ == '__main__':
 	arguments = parse_arguments()
-	print("[!][*] Benchmarks of executing \"" + str(arguments.command) + "\" " +str(arguments.runs) + " times [*][!]")
-	print("[+] CPU BENCHMARK [+]")
+
+	# If JSON was specified, print_output function does nothing
+	print_output = print if not arguments.json else lambda *a, **k: None
+
+	print_output("[!][*] Benchmarks of executing \"" + str(arguments.command) + "\" " +str(arguments.runs) + " times [*][!]")
+	print_output("[+] CPU BENCHMARK [+]")
+
+
 	hyperfine_exit_code = launch_hyperfine(arguments)
 	if hyperfine_exit_code:
 		print_error("[!] Aborting "+NAME+"!")
 		sys.exit(-1)
-	print("[+] MEMORY BENCHMARK [+]")
+	print_output("[+] MEMORY BENCHMARK [+]")
 	check_ram_usage(arguments)
 	
 	# Helpful links:
