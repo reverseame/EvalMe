@@ -47,8 +47,8 @@ def parse_arguments():
 	parser.add_argument("-r", "--runs", action="store", type=int, help="(Default = 10) Perform exactly RUNS runs for each command.", default=10)
 	parser.add_argument("-p", "--prepare", help="Execute the command before each timing run. This is useful for clearing disk caches, for example. \nThe --prepare option can be specified once for all commands or multiple times, once for each command. In the latter case, each preparation command will be run prior to the corresponding benchmark command.")
 	parser.add_argument("-c", "--cleanup", help="Execute the command after the completion of all benchmarking runs for each individual command to be benchmarked. This is useful if the commands to be benchmarked produce artifacts that need to be cleaned up.")
-	parser.add_argument("--verbose", "-v", action="count", default=0, help="Prints the original hyperfine's output.")
-	parser.add_argument("--json", "-j", action="count", default=0, help="Prints JSON-formatted output. CPU is measured in seconds; memory is measured in bytes.")
+	parser.add_argument("-j", "--json",  action="count", default=0, help="Prints JSON-formatted output. CPU is measured in seconds; memory is measured in bytes.")
+	parser.add_argument("-v", "--verbose", action="count", default=0, help="Prints the original hyperfine's output.")
 	arguments = parser.parse_args()
 
 	return arguments
