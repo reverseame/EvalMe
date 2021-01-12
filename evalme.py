@@ -90,11 +90,7 @@ def print_descriptive_statistics_from_dataframe(dataframe):
 	print_output("\t[>]\tmax " + humanfriendly.format_size(dataframe.loc['max', 0]))
 	print_output("")
 
-def launch_hyperfine(arguments):
-
-	# Temporary file creation
-	os_handler, filename = tempfile.mkstemp(suffix=".json", dir=".") # If dir is not specified, the file is created within /tmp/
-	print_output("TEMPORARY FILE CREATED -> " + filename)
+def launch_hyperfine(arguments, filename):
 
 	# Parsing the corresponding arguments and binary to execute by hiperfine
 	arguments_copy = copy.deepcopy(arguments)
@@ -134,9 +130,6 @@ def launch_hyperfine(arguments):
 		return return_code
 
 	print_results_from_json_file(filename)
-
-	# Delete results file
-	delete_file(filename)
 
 	return return_code
 
@@ -194,11 +187,19 @@ if __name__ == '__main__':
 	print_output("[!][*] Benchmarks of executing \"" + str(arguments.command) + "\" " +str(arguments.runs) + " times [*][!]")
 	print_output("[+] CPU BENCHMARK [+]")
 
+	# Temporary file creation
+	os_handler, filename = tempfile.mkstemp(suffix=".json", dir=".") # If dir is not specified, the file is created within /tmp/
+	print_output("TEMPORARY FILE CREATED -> " + filename)
 
-	hyperfine_exit_code = launch_hyperfine(arguments)
+	hyperfine_exit_code = launch_hyperfine(arguments, filename)
 	if hyperfine_exit_code:
 		print_error("[!] Aborting "+NAME+"!")
+		# Delete results file
+		delete_file(filename)
 		sys.exit(-1)
+
+	# Delete results file
+	delete_file(filename)
 	print_output("[+] MEMORY BENCHMARK [+]")
 	check_ram_usage(arguments)
 	
