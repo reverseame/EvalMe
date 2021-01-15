@@ -136,6 +136,9 @@ def launch_hyperfine(arguments, filename):
 	arguments_array.append("--export-json")
 	arguments_array.append(filename)
 
+	# In case there's an error
+	arguments_array.append("--show-output")
+
 	arguments_array.insert(0, "hyperfine")
 
 	print_output("[+] Launching hyperfine\n\t"  + str(arguments_array))
