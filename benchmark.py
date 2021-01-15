@@ -10,14 +10,18 @@ Script used to automate the process of benchmarking several binaries using EvalM
 import argparse
 import os
 import hashlib
+import subprocess
+import sys
+import json
 
 plaintext_folder = "Plaintext"
-bash_script = "script.sh"
+bash_script_name = "script.sh"
+eval_me = "./evalme.py"
 
 def parse_arguments():
 	parser = argparse.ArgumentParser(description="Benchmarking cipher/decipher binaries with EvalMe")
 	parser.add_argument("input_directory", help="Input directory. The directory must contain a folder called \"Plaintext\", where original files are. Additionally, a folder for each cipher algorithm should be created.")
-	#parser.add_argument("output", help="Input directory")
+	parser.add_argument("output", help="Output json file. (json extension will be added automatically)")
 	arguments = parser.parse_args()
 
 	return arguments
@@ -31,12 +35,15 @@ def get_md5_of_file(filename):
 	        md5_hash.update(byte_block)
 	    return md5_hash.hexdigest()
 
+def get_absolute_path(filename):
+	return os.path.abspath(filename)
 
 if __name__ == '__main__':
 	arguments = parse_arguments()
 
 	plaintext_files = []
 	plaintext_files_md5 = {}
+	
 
 	# Retrieving plaintext files
 	for (path, dirs, files) in os.walk(os.path.join(arguments.input_directory, plaintext_folder)):
@@ -48,22 +55,109 @@ if __name__ == '__main__':
 	# Computing MD5 of plaintext files
 	for file in plaintext_files:
 		file_path = os.path.join(path, file)
-		plaintext_files_md5[file_path] = (file, get_md5_of_file(file_path))
+		plaintext_files_md5[file] = (file_path, get_md5_of_file(file_path))
 
 	print(plaintext_files_md5)	
+	json_data = {}
+	json_data['results'] = {}
 
 	for (path, dirs, files) in os.walk(arguments.input_directory):
 
-		print(path)
-		print(dirs)
+		print("[+!* -> ] NOW TRAVERSING {} PATH, with {} DIRS and {} FILES".format(path, dirs, files))
 
-		
-		#if path != os.path.join(arguments.input_directory, plaintext_folder):
+		# We perform ciphering, deciphering and results gather for every subdirectory except the directory itself and the one containing original plaintexts
+		if path != os.path.join(arguments.input_directory, plaintext_folder) and path != arguments.input_directory:
 			# Ciphering / deciphering and results gathering should happen here. Overhead must be also taken into account
 			# Ciphering (pseudocode): 
-			# for (file, hash) in plaintext_files_md5:
-				# bash = "\"bash_script -c {} {}\"".format(file, )
-				# popen = subprocess.run(arguments_array, capture_output=True) script.sh -
+			bash_script_abspath = get_absolute_path(os.path.join(path, bash_script_name))
+			algorithm = path.split("/")[-1]
+			json_data['results'][algorithm] = {}
+			print("[*** ->] NOW TESTING {}".format(algorithm))
+			for file, description in plaintext_files_md5.items():
+				'''
+				file: plaintext file name
+				description[0]: plaintext full path
+				description[1]: md5
+				'''	
+				json_data['results'][algorithm][file] = {}
+				################################################# CIPHERING #######################################################
+				input_file_abspath = get_absolute_path(description[0])
+				output_file_abspath = get_absolute_path(os.path.join(path, file)) + ".enc"
+				bash = "{} -c {} {}".format(bash_script_abspath, input_file_abspath, output_file_abspath)
+				print(bash)
+				arguments_array = [eval_me, bash, '--json']
+				print(arguments_array)
 
+				popen = subprocess.run(arguments_array, capture_output=True) 
+				# Check errors
+				if popen.returncode:
+					print("[!] ** THERE WAS AN ERROR:\n{}".format(popen.stderr.decode()))
+					print("[!] ABORTING [!]")
+					sys.exit(-1)
+
+				json_results = json.loads(popen.stdout.decode())
+
+				print(json.dumps(json_results, indent=4))
+
+				print("CPU MEAN -> {}\nRAM MEAN ->{}\nVRAM MEAN->{}".format(json_results['results']['cpu']['mean'],json_results['results']['memory']['real']['mean'],json_results['results']['memory']['virtual']['mean']))
+
+				
+
+				json_data['results'][algorithm][file]['ciphering'] = {
+					'cpu':json_results['results']['cpu']['mean'],
+					'mem':json_results['results']['memory']['real']['mean'],
+					'vmem':json_results['results']['memory']['virtual']['mean']
+				}
+
+				print(json.dumps(json_data, indent=4))
+				##################################################################################################################
+
+
+				################################################ DECIPHERING #####################################################
+				input_file_abspath = output_file_abspath
+				output_file_abspath = get_absolute_path(os.path.join(path, file))
+
+				print("[!!!] WHEN DECIPHERING -> input: {} and output: {}".format(input_file_abspath, output_file_abspath))
+
+				bash = "{} -d {} {}".format(bash_script_abspath, input_file_abspath, output_file_abspath)
+				print(bash)
+				arguments_array = [eval_me, bash, '--json']
+				print(arguments_array)
+
+				popen = subprocess.run(arguments_array, capture_output=True) 
+				# Check errors
+				if popen.returncode:
+					print("[!] ** THERE WAS AN ERROR:\n{}".format(popen.stderr.decode()))
+					print("[!] ABORTING [!]")
+					sys.exit(-1)
+
+				json_results = json.loads(popen.stdout.decode())
+
+				print(json.dumps(json_results, indent=4))
+
+				print("CPU MEAN -> {}\nRAM MEAN ->{}\nVRAM MEAN->{}".format(json_results['results']['cpu']['mean'],json_results['results']['memory']['real']['mean'],json_results['results']['memory']['virtual']['mean']))
+
+				json_data['results'][algorithm][file]['deciphering'] = {
+					'cpu':json_results['results']['cpu']['mean'],
+					'mem':json_results['results']['memory']['real']['mean'],
+					'vmem':json_results['results']['memory']['virtual']['mean']
+				}
+
+				##################################################################################################################
+
+
+				################################################ MD5 CHECKING #####################################################
+				'''
+				deciphered_md5 = get_md5_of_file(output_file_abspath)
+				if deciphered_md5 != description[1]:
+					print("[!] ERROR. MD5 of deciphered file (1) is not equal to the original plaintext (2) [!]\n[!] 1: {} [!]\n[!] 2: {} [!]".format(deciphered_md5, description[1]))
+					print("[!] ABORTING [!]")
+					sys.exit(-1)
+				'''
+				##################################################################################################################
+
+	print(json.dumps(json_data, indent=4))
+	with open(arguments.output+".json", "w") as file:
+		json.dump(json_data, file)
 	
-	
+				
