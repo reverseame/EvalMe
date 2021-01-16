@@ -42,9 +42,8 @@ def get_absolute_path(filename):
 
 def encryption(bash_script, input_file, output_file, mode, key_length):
 	bash = "{} -e {} {} -m {} -k {}".format(bash_script, input_file, output_file, mode, key_length)
-	print(bash)
+
 	arguments_array = [eval_me, bash, '--json']
-	print(arguments_array)
 
 	popen = subprocess.run(arguments_array, capture_output=True) 
 	# Check errors
@@ -54,10 +53,6 @@ def encryption(bash_script, input_file, output_file, mode, key_length):
 		sys.exit(-1)
 
 	json_results = json.loads(popen.stdout.decode())
-
-	print(json.dumps(json_results, indent=4))
-
-	print("CPU MEAN -> {}\nRAM MEAN ->{}\nVRAM MEAN->{}".format(json_results['results']['cpu']['mean'],json_results['results']['memory']['real']['mean'],json_results['results']['memory']['virtual']['mean']))
 
 	json_data['results'][algorithm][file][mode][key_length]['encrypt'] = {
 		'cpu':json_results['results']['cpu']['mean'],
@@ -65,14 +60,12 @@ def encryption(bash_script, input_file, output_file, mode, key_length):
 		'vmem':json_results['results']['memory']['virtual']['mean']
 	}
 
-	print(json.dumps(json_data, indent=4))
 
 
 def decryption(bash_script, input_file, output_file, mode, key_length):
 	bash = "{} -d {} {} -m {} -k {}".format(bash_script, input_file, output_file, mode, key_length)
-	print(bash)
+
 	arguments_array = [eval_me, bash, '--json']
-	print(arguments_array)
 
 	popen = subprocess.run(arguments_array, capture_output=True) 
 	# Check errors
@@ -82,10 +75,6 @@ def decryption(bash_script, input_file, output_file, mode, key_length):
 		sys.exit(-1)
 
 	json_results = json.loads(popen.stdout.decode())
-
-	print(json.dumps(json_results, indent=4))
-
-	print("CPU MEAN -> {}\nRAM MEAN ->{}\nVRAM MEAN->{}".format(json_results['results']['cpu']['mean'],json_results['results']['memory']['real']['mean'],json_results['results']['memory']['virtual']['mean']))
 
 	json_data['results'][algorithm][file][mode][key_length]['decrypt'] = {
 		'cpu':json_results['results']['cpu']['mean'],
@@ -100,26 +89,20 @@ if __name__ == '__main__':
 	plaintext_files = []
 	plaintext_files_md5 = {}
 	
-
 	# Retrieving plaintext files
 	for (path, dirs, files) in os.walk(os.path.join(arguments.input_directory, plaintext_folder)):
 		for file in files:
 			plaintext_files.append(file)
-
-	print(plaintext_files)
 
 	# Computing MD5 of plaintext files
 	for file in plaintext_files:
 		file_path = os.path.join(path, file)
 		plaintext_files_md5[file] = (file_path, get_md5_of_file(file_path))
 
-	print(plaintext_files_md5)	
 	json_data = {}
 	json_data['results'] = {}
 
 	for (path, dirs, files) in os.walk(arguments.input_directory):
-
-		print("[+!* -> ] NOW TRAVERSING {} PATH, with {} DIRS and {} FILES".format(path, dirs, files))
 
 		# We perform ciphering, deciphering and results gather for every subdirectory except the directory itself and the one containing original plaintexts
 		if path != os.path.join(arguments.input_directory, plaintext_folder) and path != arguments.input_directory:
@@ -128,7 +111,7 @@ if __name__ == '__main__':
 			bash_script_abspath = get_absolute_path(os.path.join(path, bash_script_name))
 			algorithm = path.split("/")[-1]
 			json_data['results'][algorithm] = {}
-			print("[*** ->] NOW TESTING {}".format(algorithm))
+
 			for file, description in plaintext_files_md5.items():
 				'''
 				file: plaintext file name
@@ -148,8 +131,6 @@ if __name__ == '__main__':
 						################################################# ENCRYPTION #######################################################
 						input_file_abspath = get_absolute_path(description[0])
 						output_file_abspath = get_absolute_path(os.path.join(path, file)) + ".enc"
-
-						print("[!!!] WHEN ENCRYPTING -> input: {} and output: {}".format(input_file_abspath, output_file_abspath))
 						
 						encryption(bash_script_abspath,
 							input_file_abspath,
@@ -163,14 +144,11 @@ if __name__ == '__main__':
 						input_file_abspath = output_file_abspath
 						output_file_abspath = get_absolute_path(os.path.join(path, file))
 
-						print("[!!!] WHEN DECRYPTING -> input: {} and output: {}".format(input_file_abspath, output_file_abspath))
-
 						decryption(bash_script_abspath,
 							input_file_abspath,
 							output_file_abspath,
 							mode,
 							key_length)
-
 						##################################################################################################################
 
 
@@ -184,7 +162,6 @@ if __name__ == '__main__':
 						'''
 						##################################################################################################################
 
-	print(json.dumps(json_data, indent=4))
 	with open(arguments.output+".json", "w") as file:
 		json.dump(json_data, file)
 	
