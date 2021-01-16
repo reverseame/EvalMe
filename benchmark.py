@@ -40,6 +40,60 @@ def get_md5_of_file(filename):
 def get_absolute_path(filename):
 	return os.path.abspath(filename)
 
+def encryption(bash_script, input_file, output_file, mode, key_length):
+	bash = "{} -e {} {} -m {} -k {}".format(bash_script, input_file, output_file, mode, key_length)
+	print(bash)
+	arguments_array = [eval_me, bash, '--json']
+	print(arguments_array)
+
+	popen = subprocess.run(arguments_array, capture_output=True) 
+	# Check errors
+	if popen.returncode:
+		print("[!] ** THERE WAS AN ERROR:\n{}".format(popen.stderr.decode()))
+		print("[!] ABORTING [!]")
+		sys.exit(-1)
+
+	json_results = json.loads(popen.stdout.decode())
+
+	print(json.dumps(json_results, indent=4))
+
+	print("CPU MEAN -> {}\nRAM MEAN ->{}\nVRAM MEAN->{}".format(json_results['results']['cpu']['mean'],json_results['results']['memory']['real']['mean'],json_results['results']['memory']['virtual']['mean']))
+
+	json_data['results'][algorithm][file][mode][key_length]['encrypt'] = {
+		'cpu':json_results['results']['cpu']['mean'],
+		'mem':json_results['results']['memory']['real']['mean'],
+		'vmem':json_results['results']['memory']['virtual']['mean']
+	}
+
+	print(json.dumps(json_data, indent=4))
+
+
+def decryption(bash_script, input_file, output_file, mode, key_length):
+	bash = "{} -d {} {} -m {} -k {}".format(bash_script, input_file, output_file, mode, key_length)
+	print(bash)
+	arguments_array = [eval_me, bash, '--json']
+	print(arguments_array)
+
+	popen = subprocess.run(arguments_array, capture_output=True) 
+	# Check errors
+	if popen.returncode:
+		print("[!] ** THERE WAS AN ERROR:\n{}".format(popen.stderr.decode()))
+		print("[!] ABORTING [!]")
+		sys.exit(-1)
+
+	json_results = json.loads(popen.stdout.decode())
+
+	print(json.dumps(json_results, indent=4))
+
+	print("CPU MEAN -> {}\nRAM MEAN ->{}\nVRAM MEAN->{}".format(json_results['results']['cpu']['mean'],json_results['results']['memory']['real']['mean'],json_results['results']['memory']['virtual']['mean']))
+
+	json_data['results'][algorithm][file][mode][key_length]['decrypt'] = {
+		'cpu':json_results['results']['cpu']['mean'],
+		'mem':json_results['results']['memory']['real']['mean'],
+		'vmem':json_results['results']['memory']['virtual']['mean']
+	}
+
+
 if __name__ == '__main__':
 	arguments = parse_arguments()
 
@@ -94,33 +148,14 @@ if __name__ == '__main__':
 						################################################# ENCRYPTION #######################################################
 						input_file_abspath = get_absolute_path(description[0])
 						output_file_abspath = get_absolute_path(os.path.join(path, file)) + ".enc"
-						bash = "{} -e {} {} -m {} -k {}".format(bash_script_abspath, input_file_abspath, output_file_abspath, mode, key_length)
-						print(bash)
-						arguments_array = [eval_me, bash, '--json']
-						print(arguments_array)
 
-						popen = subprocess.run(arguments_array, capture_output=True) 
-						# Check errors
-						if popen.returncode:
-							print("[!] ** THERE WAS AN ERROR:\n{}".format(popen.stderr.decode()))
-							print("[!] ABORTING [!]")
-							sys.exit(-1)
-
-						json_results = json.loads(popen.stdout.decode())
-
-						print(json.dumps(json_results, indent=4))
-
-						print("CPU MEAN -> {}\nRAM MEAN ->{}\nVRAM MEAN->{}".format(json_results['results']['cpu']['mean'],json_results['results']['memory']['real']['mean'],json_results['results']['memory']['virtual']['mean']))
-
+						print("[!!!] WHEN ENCRYPTING -> input: {} and output: {}".format(input_file_abspath, output_file_abspath))
 						
-
-						json_data['results'][algorithm][file][mode][key_length]['encrypt'] = {
-							'cpu':json_results['results']['cpu']['mean'],
-							'mem':json_results['results']['memory']['real']['mean'],
-							'vmem':json_results['results']['memory']['virtual']['mean']
-						}
-
-						print(json.dumps(json_data, indent=4))
+						encryption(bash_script_abspath,
+							input_file_abspath,
+							output_file_abspath,
+							mode,
+							key_length)
 						##################################################################################################################
 
 
@@ -128,31 +163,13 @@ if __name__ == '__main__':
 						input_file_abspath = output_file_abspath
 						output_file_abspath = get_absolute_path(os.path.join(path, file))
 
-						print("[!!!] WHEN DECIPHERING -> input: {} and output: {}".format(input_file_abspath, output_file_abspath))
+						print("[!!!] WHEN DECRYPTING -> input: {} and output: {}".format(input_file_abspath, output_file_abspath))
 
-						bash = "{} -d {} {} -m {} -k {}".format(bash_script_abspath, input_file_abspath, output_file_abspath, output_file_abspath, mode, key_length)
-						print(bash)
-						arguments_array = [eval_me, bash, '--json']
-						print(arguments_array)
-
-						popen = subprocess.run(arguments_array, capture_output=True) 
-						# Check errors
-						if popen.returncode:
-							print("[!] ** THERE WAS AN ERROR:\n{}".format(popen.stderr.decode()))
-							print("[!] ABORTING [!]")
-							sys.exit(-1)
-
-						json_results = json.loads(popen.stdout.decode())
-
-						print(json.dumps(json_results, indent=4))
-
-						print("CPU MEAN -> {}\nRAM MEAN ->{}\nVRAM MEAN->{}".format(json_results['results']['cpu']['mean'],json_results['results']['memory']['real']['mean'],json_results['results']['memory']['virtual']['mean']))
-
-						json_data['results'][algorithm][file][mode][key_length]['decrypt'] = {
-							'cpu':json_results['results']['cpu']['mean'],
-							'mem':json_results['results']['memory']['real']['mean'],
-							'vmem':json_results['results']['memory']['virtual']['mean']
-						}
+						decryption(bash_script_abspath,
+							input_file_abspath,
+							output_file_abspath,
+							mode,
+							key_length)
 
 						##################################################################################################################
 
