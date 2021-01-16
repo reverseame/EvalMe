@@ -17,6 +17,8 @@ import json
 plaintext_folder = "Plaintext"
 bash_script_name = "script.sh"
 eval_me = "./evalme.py"
+key_lengths = [128, 192, 256]
+operation_modes = ['cbc', 'ofb', 'ctr', 'cfb']
 
 def parse_arguments():
 	parser = argparse.ArgumentParser(description="Benchmarking cipher/decipher binaries with EvalMe")
@@ -80,81 +82,90 @@ if __name__ == '__main__':
 				description[1]: md5
 				'''	
 				json_data['results'][algorithm][file] = {}
-				################################################# CIPHERING #######################################################
-				input_file_abspath = get_absolute_path(description[0])
-				output_file_abspath = get_absolute_path(os.path.join(path, file)) + ".enc"
-				bash = "{} -c {} {}".format(bash_script_abspath, input_file_abspath, output_file_abspath)
-				print(bash)
-				arguments_array = [eval_me, bash, '--json']
-				print(arguments_array)
 
-				popen = subprocess.run(arguments_array, capture_output=True) 
-				# Check errors
-				if popen.returncode:
-					print("[!] ** THERE WAS AN ERROR:\n{}".format(popen.stderr.decode()))
-					print("[!] ABORTING [!]")
-					sys.exit(-1)
+				for mode in operation_modes:
 
-				json_results = json.loads(popen.stdout.decode())
+					json_data['results'][algorithm][file][mode] = {}
 
-				print(json.dumps(json_results, indent=4))
+					for key_length in key_lengths:
 
-				print("CPU MEAN -> {}\nRAM MEAN ->{}\nVRAM MEAN->{}".format(json_results['results']['cpu']['mean'],json_results['results']['memory']['real']['mean'],json_results['results']['memory']['virtual']['mean']))
+						json_data['results'][algorithm][file][mode][key_length] = {}
 
-				
+						################################################# ENCRYPTION #######################################################
+						input_file_abspath = get_absolute_path(description[0])
+						output_file_abspath = get_absolute_path(os.path.join(path, file)) + ".enc"
+						bash = "{} -e {} {} -m {} -k {}".format(bash_script_abspath, input_file_abspath, output_file_abspath, mode, key_length)
+						print(bash)
+						arguments_array = [eval_me, bash, '--json']
+						print(arguments_array)
 
-				json_data['results'][algorithm][file]['ciphering'] = {
-					'cpu':json_results['results']['cpu']['mean'],
-					'mem':json_results['results']['memory']['real']['mean'],
-					'vmem':json_results['results']['memory']['virtual']['mean']
-				}
+						popen = subprocess.run(arguments_array, capture_output=True) 
+						# Check errors
+						if popen.returncode:
+							print("[!] ** THERE WAS AN ERROR:\n{}".format(popen.stderr.decode()))
+							print("[!] ABORTING [!]")
+							sys.exit(-1)
 
-				print(json.dumps(json_data, indent=4))
-				##################################################################################################################
+						json_results = json.loads(popen.stdout.decode())
 
+						print(json.dumps(json_results, indent=4))
 
-				################################################ DECIPHERING #####################################################
-				input_file_abspath = output_file_abspath
-				output_file_abspath = get_absolute_path(os.path.join(path, file))
+						print("CPU MEAN -> {}\nRAM MEAN ->{}\nVRAM MEAN->{}".format(json_results['results']['cpu']['mean'],json_results['results']['memory']['real']['mean'],json_results['results']['memory']['virtual']['mean']))
 
-				print("[!!!] WHEN DECIPHERING -> input: {} and output: {}".format(input_file_abspath, output_file_abspath))
+						
 
-				bash = "{} -d {} {}".format(bash_script_abspath, input_file_abspath, output_file_abspath)
-				print(bash)
-				arguments_array = [eval_me, bash, '--json']
-				print(arguments_array)
+						json_data['results'][algorithm][file][mode][key_length]['encrypt'] = {
+							'cpu':json_results['results']['cpu']['mean'],
+							'mem':json_results['results']['memory']['real']['mean'],
+							'vmem':json_results['results']['memory']['virtual']['mean']
+						}
 
-				popen = subprocess.run(arguments_array, capture_output=True) 
-				# Check errors
-				if popen.returncode:
-					print("[!] ** THERE WAS AN ERROR:\n{}".format(popen.stderr.decode()))
-					print("[!] ABORTING [!]")
-					sys.exit(-1)
-
-				json_results = json.loads(popen.stdout.decode())
-
-				print(json.dumps(json_results, indent=4))
-
-				print("CPU MEAN -> {}\nRAM MEAN ->{}\nVRAM MEAN->{}".format(json_results['results']['cpu']['mean'],json_results['results']['memory']['real']['mean'],json_results['results']['memory']['virtual']['mean']))
-
-				json_data['results'][algorithm][file]['deciphering'] = {
-					'cpu':json_results['results']['cpu']['mean'],
-					'mem':json_results['results']['memory']['real']['mean'],
-					'vmem':json_results['results']['memory']['virtual']['mean']
-				}
-
-				##################################################################################################################
+						print(json.dumps(json_data, indent=4))
+						##################################################################################################################
 
 
-				################################################ MD5 CHECKING #####################################################
-				'''
-				deciphered_md5 = get_md5_of_file(output_file_abspath)
-				if deciphered_md5 != description[1]:
-					print("[!] ERROR. MD5 of deciphered file (1) is not equal to the original plaintext (2) [!]\n[!] 1: {} [!]\n[!] 2: {} [!]".format(deciphered_md5, description[1]))
-					print("[!] ABORTING [!]")
-					sys.exit(-1)
-				'''
-				##################################################################################################################
+						################################################ DECRYPTION #####################################################
+						input_file_abspath = output_file_abspath
+						output_file_abspath = get_absolute_path(os.path.join(path, file))
+
+						print("[!!!] WHEN DECIPHERING -> input: {} and output: {}".format(input_file_abspath, output_file_abspath))
+
+						bash = "{} -d {} {} -m {} -k {}".format(bash_script_abspath, input_file_abspath, output_file_abspath, output_file_abspath, mode, key_length)
+						print(bash)
+						arguments_array = [eval_me, bash, '--json']
+						print(arguments_array)
+
+						popen = subprocess.run(arguments_array, capture_output=True) 
+						# Check errors
+						if popen.returncode:
+							print("[!] ** THERE WAS AN ERROR:\n{}".format(popen.stderr.decode()))
+							print("[!] ABORTING [!]")
+							sys.exit(-1)
+
+						json_results = json.loads(popen.stdout.decode())
+
+						print(json.dumps(json_results, indent=4))
+
+						print("CPU MEAN -> {}\nRAM MEAN ->{}\nVRAM MEAN->{}".format(json_results['results']['cpu']['mean'],json_results['results']['memory']['real']['mean'],json_results['results']['memory']['virtual']['mean']))
+
+						json_data['results'][algorithm][file][mode][key_length]['decrypt'] = {
+							'cpu':json_results['results']['cpu']['mean'],
+							'mem':json_results['results']['memory']['real']['mean'],
+							'vmem':json_results['results']['memory']['virtual']['mean']
+						}
+
+						##################################################################################################################
+
+
+						################################################ MD5 CHECKING #####################################################
+						'''
+						deciphered_md5 = get_md5_of_file(output_file_abspath)
+						if deciphered_md5 != description[1]:
+							print("[!] ERROR. MD5 of deciphered file (1) is not equal to the original plaintext (2) [!]\n[!] 1: {} [!]\n[!] 2: {} [!]".format(deciphered_md5, description[1]))
+							print("[!] ABORTING [!]")
+							sys.exit(-1)
+						'''
+						##################################################################################################################
 
 	print(json.dumps(json_data, indent=4))
 	with open(arguments.output+".json", "w") as file:
