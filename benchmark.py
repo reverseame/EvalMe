@@ -5,7 +5,17 @@
 	Ricardo J Rodriguez
 	Pedro Álvarez
 
-Script used to automate the process of benchmarking several binaries using EvalMe.py	
+Script used to automate the process of benchmarking several binaries using EvalMe.py
+
+The main structure comprises several nested foreach loops. These loops are:
+For each folder in the input directory that is not the directory itself or the plaintext folder:
+	For each .bin file (binary) in folder:
+		For each plaintext file in plaintext folder:
+			For each operation mode:
+				For each key_length:
+					encrypt
+					decrypt
+					compareMD5
 '''
 import argparse
 import os
@@ -14,8 +24,8 @@ import subprocess
 import sys
 import json
 
-plaintext_folder = "Plaintext" ## Change this
-bash_script_name = "script.sh" ## Change this
+plaintext_folder = "inputs" ## Change this
+#bash_script_name = "script.sh" ## Change this
 eval_me = "./evalme.py"
 key_lengths = [128, 192, 256]
 operation_modes = ['cbc', 'ofb', 'ctr', 'cfb']
@@ -41,12 +51,15 @@ def get_md5_of_file(filename):
 def get_absolute_path(filename):
 	return os.path.abspath(filename)
 
-def encryption(bash_script, input_file, output_file, mode, key_length):
-	bash = "{} -e {} {} -m {} -k {}".format(bash_script, input_file, output_file, mode, key_length)
+def encryption(executable_binary, input_file, output_file, mode, key_length):
+	command = "{} -m {} -k {} -e {} {} ".format(executable_binary, mode, key_length, input_file, output_file)
 
-	arguments_array = [eval_me, bash, '--json', "-r {}".format(arguments.runs)]
+	arguments_array = [eval_me, command, '--json', "-r {}".format(arguments.runs)]
 
 	popen = subprocess.run(arguments_array, capture_output=True) 
+
+	print("[+] -> EXECUTING ENCRYPTION: {}".format(arguments_array))
+
 	# Check errors
 	if popen.returncode:
 		print("[!] ** THERE WAS AN ERROR:\n{}".format(popen.stderr.decode()))
@@ -55,7 +68,7 @@ def encryption(bash_script, input_file, output_file, mode, key_length):
 
 	json_results = json.loads(popen.stdout.decode())
 
-	json_data['results'][algorithm][file][mode][key_length]['encrypt'] = {
+	json_data['results'][algorithm][file_in_algorithm_folder][file][mode][key_length]['encrypt'] = {
 		'cpu':json_results['results']['cpu']['mean'],
 		'mem':json_results['results']['memory']['real']['mean'],
 		'vmem':json_results['results']['memory']['virtual']['mean']
@@ -63,12 +76,15 @@ def encryption(bash_script, input_file, output_file, mode, key_length):
 
 
 
-def decryption(bash_script, input_file, output_file, mode, key_length):
-	bash = "{} -d {} {} -m {} -k {}".format(bash_script, input_file, output_file, mode, key_length)
+def decryption(executable_binary, input_file, output_file, mode, key_length):
+	command = "{} -m {} -k {} -d {} {} ".format(executable_binary, mode, key_length, input_file, output_file)
 
-	arguments_array = [eval_me, bash, '--json', "-r {}".format(arguments.runs)]
+	arguments_array = [eval_me, command, '--json', "-r {}".format(arguments.runs)]
 
 	popen = subprocess.run(arguments_array, capture_output=True) 
+
+	print("[+] -> EXECUTING DERYPTION: {}".format(arguments_array))
+
 	# Check errors
 	if popen.returncode:
 		print("[!] ** THERE WAS AN ERROR:\n{}".format(popen.stderr.decode()))
@@ -77,7 +93,7 @@ def decryption(bash_script, input_file, output_file, mode, key_length):
 
 	json_results = json.loads(popen.stdout.decode())
 
-	json_data['results'][algorithm][file][mode][key_length]['decrypt'] = {
+	json_data['results'][algorithm][file_in_algorithm_folder][file][mode][key_length]['decrypt'] = {
 		'cpu':json_results['results']['cpu']['mean'],
 		'mem':json_results['results']['memory']['real']['mean'],
 		'vmem':json_results['results']['memory']['virtual']['mean']
@@ -109,59 +125,67 @@ if __name__ == '__main__':
 		if path != os.path.join(arguments.input_directory, plaintext_folder) and path != arguments.input_directory:
 			# Ciphering / deciphering and results gathering should happen here. Overhead must be also taken into account
 			# Ciphering (pseudocode): 
-			bash_script_abspath = get_absolute_path(os.path.join(path, bash_script_name))
 			algorithm = path.split("/")[-1]
 			json_data['results'][algorithm] = {}
 
-			for file, description in plaintext_files_md5.items():
-				'''
-				file: plaintext file name
-				description[0]: plaintext full path
-				description[1]: md5
-				'''	
-				json_data['results'][algorithm][file] = {}
+			# For each .bin filae (binary)
+			for file_in_algorithm_folder in files:
+				if file_in_algorithm_folder.endswith(".bin"):
+					executable_binary_abspath = get_absolute_path(os.path.join(path, file_in_algorithm_folder))
 
-				for mode in operation_modes:
+					json_data['results'][algorithm][file_in_algorithm_folder] = {}
 
-					json_data['results'][algorithm][file][mode] = {}
+					# For each plaintext file
+					for file, description in plaintext_files_md5.items():
+						'''
+						file: plaintext file name
+						description[0]: plaintext full path
+						description[1]: md5
+						'''	
+						json_data['results'][algorithm][file_in_algorithm_folder][file] = {}
 
-					for key_length in key_lengths:
+						for mode in operation_modes:
 
-						json_data['results'][algorithm][file][mode][key_length] = {}
+							json_data['results'][algorithm][file_in_algorithm_folder][file][mode] = {}
 
-						################################################# ENCRYPTION #######################################################
-						input_file_abspath = get_absolute_path(description[0])
-						output_file_abspath = get_absolute_path(os.path.join(path, file)) + ".enc"
-						
-						encryption(bash_script_abspath,
-							input_file_abspath,
-							output_file_abspath,
-							mode,
-							key_length)
-						##################################################################################################################
+							for key_length in key_lengths:
 
+								json_data['results'][algorithm][file_in_algorithm_folder][file][mode][key_length] = {}
 
-						################################################ DECRYPTION #####################################################
-						input_file_abspath = output_file_abspath
-						output_file_abspath = get_absolute_path(os.path.join(path, file))
-
-						decryption(bash_script_abspath,
-							input_file_abspath,
-							output_file_abspath,
-							mode,
-							key_length)
-						##################################################################################################################
+								################################################# ENCRYPTION #######################################################
+								input_file_abspath = get_absolute_path(description[0])
+								output_file_abspath = get_absolute_path(os.path.join(path, file)) + ".enc"
+								
+								encryption(executable_binary_abspath,
+									input_file_abspath,
+									output_file_abspath,
+									mode,
+									key_length)
+								##################################################################################################################
 
 
-						################################################ MD5 CHECKING #####################################################
-					
-						deciphered_md5 = get_md5_of_file(output_file_abspath)
-						if deciphered_md5 != description[1]:
-							print("[!] ERROR. MD5 of deciphered file (1) is not equal to the original plaintext (2) [!]\n[!] 1: {} [!]\n[!] 2: {} [!]".format(deciphered_md5, description[1]))
-							print("[!] ABORTING [!]")
-							sys.exit(-1)
-						
-						##################################################################################################################
+								################################################ DECRYPTION #####################################################
+								input_file_abspath = output_file_abspath
+								output_file_abspath = get_absolute_path(os.path.join(path, file))
+
+								decryption(executable_binary_abspath,
+									input_file_abspath,
+									output_file_abspath,
+									mode,
+									key_length)
+								##################################################################################################################
+
+
+								################################################ MD5 CHECKING #####################################################
+							
+								deciphered_md5 = get_md5_of_file(output_file_abspath)
+								print("[+] -> CHECKING MD5 OF ORIGINAL VS DECIPHERED\n\t{}\n\t{}".format(description[1], deciphered_md5))
+								if deciphered_md5 != description[1]:
+									print("[!] ERROR. MD5 of deciphered file (1) is not equal to the original plaintext (2) [!]\n[!] 1: {} [!]\n[!] 2: {} [!]".format(deciphered_md5, description[1]))
+									print("[!] ABORTING [!]")
+									sys.exit(-1)
+								
+								##################################################################################################################
 
 	with open(arguments.output+".json", "w") as file:
 		json.dump(json_data, file)
