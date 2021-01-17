@@ -24,6 +24,7 @@ def parse_arguments():
 	parser = argparse.ArgumentParser(description="Benchmarking cipher/decipher binaries with EvalMe")
 	parser.add_argument("input_directory", help="Input directory. The directory must contain a folder called \"Plaintext\", where original files are. Additionally, a folder for each cipher algorithm should be created.")
 	parser.add_argument("output", help="Output json file. (json extension will be added automatically)")
+	parser.add_argument("-r", "--runs", action="store", type=int, help="(Default = 10) Perform exactly RUNS runs for each command.", default=10)
 	arguments = parser.parse_args()
 
 	return arguments
@@ -43,7 +44,7 @@ def get_absolute_path(filename):
 def encryption(bash_script, input_file, output_file, mode, key_length):
 	bash = "{} -e {} {} -m {} -k {}".format(bash_script, input_file, output_file, mode, key_length)
 
-	arguments_array = [eval_me, bash, '--json']
+	arguments_array = [eval_me, bash, '--json', "-r {}".format(arguments.runs)]
 
 	popen = subprocess.run(arguments_array, capture_output=True) 
 	# Check errors
@@ -65,7 +66,7 @@ def encryption(bash_script, input_file, output_file, mode, key_length):
 def decryption(bash_script, input_file, output_file, mode, key_length):
 	bash = "{} -d {} {} -m {} -k {}".format(bash_script, input_file, output_file, mode, key_length)
 
-	arguments_array = [eval_me, bash, '--json']
+	arguments_array = [eval_me, bash, '--json', "-r {}".format(arguments.runs)]
 
 	popen = subprocess.run(arguments_array, capture_output=True) 
 	# Check errors
@@ -153,13 +154,13 @@ if __name__ == '__main__':
 
 
 						################################################ MD5 CHECKING #####################################################
-						'''
+					
 						deciphered_md5 = get_md5_of_file(output_file_abspath)
 						if deciphered_md5 != description[1]:
 							print("[!] ERROR. MD5 of deciphered file (1) is not equal to the original plaintext (2) [!]\n[!] 1: {} [!]\n[!] 2: {} [!]".format(deciphered_md5, description[1]))
 							print("[!] ABORTING [!]")
 							sys.exit(-1)
-						'''
+						
 						##################################################################################################################
 
 	with open(arguments.output+".json", "w") as file:
