@@ -14,8 +14,8 @@ import subprocess
 import sys
 import json
 
-plaintext_folder = "Plaintext"
-bash_script_name = "script.sh"
+plaintext_folder = "Plaintext" ## Change this
+bash_script_name = "script.sh" ## Change this
 eval_me = "./evalme.py"
 key_lengths = [128, 192, 256]
 operation_modes = ['cbc', 'ofb', 'ctr', 'cfb']
