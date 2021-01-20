@@ -29,10 +29,12 @@ Available options:
 |-v, --verbose|Prints the original hyperfine's output.||||
 |-h|Prints help message|
 
-* Usage example: `./evalme.py 'i=0; while [ $i -le 1000 ]; do i=$((i+1));aux=$((i*i)); done' -r 100 -s 0.001`
+* Usage example: 
+`./evalme.py 'i=0; while [ $i -le 1000 ]; do i=$((i+1));aux=$((i*i)); done' -r 100 -s 0.001`
 ![example](https://i.imgur.com/gU1I1ab.gif)
 
-* JSON output: `./evalme.py 'i=0; while [ $i -le 1000 ]; do i=$((i+1));aux=$((i*i)); done' -r 100 -s 0.001 --json`
+* JSON output: 
+`./evalme.py 'i=0; while [ $i -le 1000 ]; do i=$((i+1));aux=$((i*i)); done' -r 100 -s 0.001 --json`
 ![json](https://i.imgur.com/nPobuH0.gif)
 
 ## License
@@ -40,6 +42,6 @@ Available options:
 
 ## Authors
 
-Razvan Raducu
-Ricardo J. Rodríguez
-Pedro Álvarez
+Razvan Raducu  
+Ricardo J. Rodríguez  
+Pedro Álvarez  
