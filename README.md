@@ -14,7 +14,7 @@ The installation of EvalMe only requires:
 
 ## Usage
 EvalMe has several avaialable options and it is fully compatible with [Hyperfine](https://github.com/sharkdp/hyperfine). Use `-h` flag to print the **help** message:
-* `./evalme.py -h`:
+* `./evalme.py -h`:  
 ![help](https://i.imgur.com/Ga9rE9x.gif)
 
 Available options:
@@ -29,11 +29,11 @@ Available options:
 |-v, --verbose|Prints the original hyperfine's output.||||
 |-h|Prints help message|
 
-* Usage example: 
+* Usage example:  
 `./evalme.py 'i=0; while [ $i -le 1000 ]; do i=$((i+1));aux=$((i*i)); done' -r 100 -s 0.001`
 ![example](https://i.imgur.com/gU1I1ab.gif)
 
-* JSON output: 
+* JSON output:  
 `./evalme.py 'i=0; while [ $i -le 1000 ]; do i=$((i+1));aux=$((i*i)); done' -r 100 -s 0.001 --json`
 ![json](https://i.imgur.com/nPobuH0.gif)
 
