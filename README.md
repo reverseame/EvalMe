@@ -1,6 +1,8 @@
 # EvalMe
 An open-source benchmarking tool.
 
+[![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
+
 ## Requisites
 **EvalMe** requires the following software to be already installed in the system:
 * [Hyperfine](https://github.com/sharkdp/hyperfine)
