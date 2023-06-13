@@ -40,10 +40,5 @@ Available options:
 ![json](https://i.imgur.com/nPobuH0.gif)
 
 ## License
-**EvalMe** is distributed under the terms of the GNU GPL v3 License. You can read its terms [here](https://github.com/reverseame/evalme/blob/main/LICENSE).
 
-## Authors
-
-Razvan Raducu  
-Ricardo J. Rodríguez  
-Pedro Álvarez  
+Licensed under the [GNU GPLv3](LICENSE) license.
